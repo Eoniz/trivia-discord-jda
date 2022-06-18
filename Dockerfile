@@ -17,7 +17,7 @@ FROM openjdk:11-jre-slim
 
 ARG version=1.0-SNAPSHOT
 
-COPY --from=build /home/app/discord/target/discord-1.0-SNAPSHOT.jar discord.jar
+COPY --from=build /home/app/discord/target/discord-1.0-SNAPSHOT-jar-with-dependencies.jar discord.jar
 
 RUN mkdir /conf/
 
