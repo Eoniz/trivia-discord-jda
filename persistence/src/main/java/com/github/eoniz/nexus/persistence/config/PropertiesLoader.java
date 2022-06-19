@@ -1,4 +1,4 @@
-package com.github.eoniz.nexus.core.config;
+package com.github.eoniz.nexus.persistence.config;
 
 import org.apache.commons.configuration2.FileBasedConfiguration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
