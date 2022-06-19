@@ -1,14 +1,14 @@
 package com.github.eoniz.nexus.discord.commands.trivia;
 
 import com.github.eoniz.nexus.core.trivia.exceptions.*;
-import com.github.eoniz.nexus.core.trivia.game.service.GameService;
+import com.github.eoniz.nexus.core.trivia.game.service.TriviaGameService;
 import com.github.eoniz.nexus.discord.annotations.ButtonInteractionHandler;
 import com.github.eoniz.nexus.discord.annotations.SlashCommand;
 import com.github.eoniz.nexus.discord.annotations.SlashCommandOption;
 import com.github.eoniz.nexus.discord.commands.AbstractSlashCommand;
-import com.github.eoniz.nexus.model.player.Player;
-import com.github.eoniz.nexus.model.question.Question;
-import com.github.eoniz.nexus.model.room.Room;
+import com.github.eoniz.nexus.model.trivia.player.TriviaPlayer;
+import com.github.eoniz.nexus.model.trivia.question.TriviaQuestion;
+import com.github.eoniz.nexus.model.trivia.room.TriviaRoom;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Member;
@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 @SlashCommandOption(optionType = OptionType.INTEGER, name = "questions", description = "number of questions")
 public class Trivia extends AbstractSlashCommand {
 
-    private final GameService gameService = new GameService();
+    private final TriviaGameService triviaGameService = new TriviaGameService();
 
     @Override
     public void handleCommand(
@@ -44,16 +44,16 @@ public class Trivia extends AbstractSlashCommand {
             @NotNull TextChannel textChannel,
             @NotNull SlashCommandInteractionEvent event
     ) {
-        Player player = getPlayer(event.getMember());
+        TriviaPlayer triviaPlayer = getPlayer(event.getMember());
 
         OptionMapping optionQuestions = event.getOption("questions");
         int numberOfQuestions = 10;
 
         if (optionQuestions != null) {
-            numberOfQuestions = optionQuestions.getAsInt();
+            numberOfQuestions = clamp(1, 20, optionQuestions.getAsInt());
         }
 
-        Room room = gameService.createRoom(player, numberOfQuestions);
+        TriviaRoom triviaRoom = triviaGameService.createRoom(triviaPlayer, numberOfQuestions);
 
         EmbedBuilder embedBuilder = new EmbedBuilder();
         embedBuilder.setTitle("Trivia");
@@ -64,30 +64,42 @@ public class Trivia extends AbstractSlashCommand {
                 "Pour rejoindre la partie, appuyez sur le bouton \"Rejoindre\"",
                 false
         );
-        embedBuilder.setFooter(String.format("%s - made with ♥ by @Eoniz", room.getRoomId()));
+        embedBuilder.setFooter(String.format("%s - made with ♥ by @Eoniz", triviaRoom.getRoomId()));
 
         event.replyEmbeds(embedBuilder.build())
                 .addActionRow(
-                        Button.primary(String.format("trivia|join|%s", room.getRoomId()), "Rejoindre"),
-                        Button.success(String.format("trivia|start|%s", room.getRoomId()), "Démarrer")
+                        Button.primary(String.format("trivia|join|%s", triviaRoom.getRoomId()), "Rejoindre"),
+                        Button.success(String.format("trivia|start|%s", triviaRoom.getRoomId()), "Démarrer")
                 )
                 .queue();
     }
 
+    private int clamp(int min, int max, int value) {
+        if (value < min) {
+            return min;
+        }
+
+        if (value > max) {
+            return max;
+        }
+
+        return value;
+    }
+
     @ButtonInteractionHandler(action = "join")
     public void handleJoinInteraction(@NotNull ButtonInteractionEvent event, String roomId) {
-        Player player = getPlayer(event.getMember());
+        TriviaPlayer triviaPlayer = getPlayer(event.getMember());
 
         try {
-            gameService.joinRoom(roomId, player);
+            triviaGameService.joinRoom(roomId, triviaPlayer);
 
             event.reply(event.getMember().getAsMention() + " a rejoint la partie !")
                     .queue();
-        } catch (RoomDoesNotExistsException e) {
+        } catch (TriviaRoomDoesNotExistsException e) {
             event.reply("Cette partie n'existe plus :(")
                     .setEphemeral(true)
                     .queue();
-        } catch (AlreadyJoinedException e) {
+        } catch (TriviaAlreadyJoinedException e) {
             event.reply("Vous êtes déjà inscrit dans la partie !")
                     .setEphemeral(true)
                     .queue();
@@ -96,24 +108,24 @@ public class Trivia extends AbstractSlashCommand {
 
     @ButtonInteractionHandler(action = "start")
     public void handleStartInteraction(@NotNull ButtonInteractionEvent event, String roomId) {
-        Player player = getPlayer(event.getMember());
+        TriviaPlayer triviaPlayer = getPlayer(event.getMember());
 
         try {
-            Question question = gameService.startGame(roomId, player);
-            printQuestion(event, question, roomId);
-        } catch (RoomDoesNotExistsException e) {
+            TriviaQuestion triviaQuestion = triviaGameService.startGame(roomId, triviaPlayer);
+            printQuestion(event, triviaQuestion, roomId);
+        } catch (TriviaRoomDoesNotExistsException e) {
             event.reply("Cette partie n'existe plus :(")
                     .setEphemeral(true)
                     .queue();
-        } catch (GameAlreadyStartedException e) {
+        } catch (TriviaGameAlreadyStartedException e) {
             event.reply("Cette partie a déjà commencé :(")
                     .setEphemeral(true)
                     .queue();
-        } catch (GameAlreadyFinishedException e) {
+        } catch (TriviaGameAlreadyFinishedException e) {
             event.reply("Cette partie est finie :(")
                     .setEphemeral(true)
                     .queue();
-        } catch (OnlyOwnerCanStartGameException e) {
+        } catch (TriviaOnlyOwnerCanStartGameException e) {
             event.reply("Seul le créateur de la room peut démarrer :(")
                     .setEphemeral(true)
                     .queue();
@@ -127,62 +139,62 @@ public class Trivia extends AbstractSlashCommand {
             String questionId,
             String answer
     ) {
-        Player player = getPlayer(event.getMember());
+        TriviaPlayer triviaPlayer = getPlayer(event.getMember());
 
         try {
-            boolean allPlayerAnswered = gameService.answerToQuestion(roomId, player, questionId, answer);
+            boolean allPlayerAnswered = triviaGameService.answerToQuestion(roomId, triviaPlayer, questionId, answer);
 
             event.reply(event.getMember().getAsMention() + " a répondu à la question !").queue();
             if (!allPlayerAnswered) {
                 return;
             }
 
-            Question question = gameService.getCurrentQuestion(roomId);
-            Map<String, String> playerAnswers = gameService.getPlayerAnswers(roomId);
-            printAnswer(event, question, playerAnswers);
-            Optional<Question> nextQuestion = gameService.nextQuestion(roomId);
+            TriviaQuestion triviaQuestion = triviaGameService.getCurrentQuestion(roomId);
+            Map<String, String> playerAnswers = triviaGameService.getPlayerAnswers(roomId);
+            printAnswer(event, triviaQuestion, playerAnswers);
+            Optional<TriviaQuestion> nextQuestion = triviaGameService.nextQuestion(roomId);
 
             if (nextQuestion.isPresent()) {
                 printQuestion(event, nextQuestion.get(), roomId);
                 return;
             }
 
-            Map<String, Integer> mapScores = gameService.getReadableMapScores(roomId);
+            Map<String, Integer> mapScores = triviaGameService.getReadableMapScores(roomId);
             printScores(event, mapScores);
 
-            gameService.destroy(roomId);
-        } catch (RoomDoesNotExistsException e) {
+            triviaGameService.destroy(roomId);
+        } catch (TriviaRoomDoesNotExistsException e) {
             event.reply("Cette partie n'existe plus :(")
                     .setEphemeral(true)
                     .queue();
-        } catch (GameNotStartedException e) {
+        } catch (TriviaGameNotStartedException e) {
             event.reply("Cette partie n'a pas encore commencé :(")
                     .setEphemeral(true)
                     .queue();
-        } catch (GameAlreadyFinishedException e) {
+        } catch (TriviaGameAlreadyFinishedException e) {
             event.reply("Cette partie est finie :(")
                     .setEphemeral(true)
                     .queue();
-        } catch (PlayerAlreadyAnsweredException e) {
+        } catch (TriviaPlayerAlreadyAnsweredException e) {
             event.reply("Vous avez déjà répondu à la question :(")
                     .setEphemeral(true)
                     .queue();
-        } catch (WrongQuestionAnsweredException e) {
+        } catch (TriviaWrongQuestionAnsweredException e) {
             event.reply("Cette question n'est pas celle en cours :(")
                     .setEphemeral(true)
                     .queue();
         }
     }
 
-    private Player getPlayer(@Nullable Member member) {
+    private TriviaPlayer getPlayer(@Nullable Member member) {
         if (member == null) {
-            return Player.builder()
+            return TriviaPlayer.builder()
                     .effectiveName("?")
                     .id("?")
                     .build();
         }
 
-        return Player.builder()
+        return TriviaPlayer.builder()
                 .effectiveName(member.getEffectiveName())
                 .id(member.getId())
                 .build();
@@ -223,7 +235,7 @@ public class Trivia extends AbstractSlashCommand {
 
     private void printAnswer(
             GenericComponentInteractionCreateEvent event,
-            Question question,
+            TriviaQuestion triviaQuestion,
             Map<String, String> playerAnswers
     ) {
         EmbedBuilder embedBuilder = new EmbedBuilder();
@@ -231,17 +243,17 @@ public class Trivia extends AbstractSlashCommand {
         embedBuilder.setTitle("Trivia");
         embedBuilder.setColor(Color.GREEN);
 
-        embedBuilder.setDescription(question.getQuestion());
+        embedBuilder.setDescription(triviaQuestion.getQuestion());
 
         embedBuilder.addField(
                 "Réponse",
-                String.format("La bonne réponse était: **%s**", question.getAnswer()),
+                String.format("La bonne réponse était: **%s**", triviaQuestion.getAnswer()),
                 false
         );
 
         embedBuilder.addField(
                 "Le saviez tu ?",
-                question.getAnecdote(),
+                triviaQuestion.getAnecdote(),
                 false
         );
 
@@ -263,7 +275,7 @@ public class Trivia extends AbstractSlashCommand {
 
     private void printQuestion(
             GenericComponentInteractionCreateEvent event,
-            Question question,
+            TriviaQuestion triviaQuestion,
             String roomId
     ) {
         EmbedBuilder embedBuilder = new EmbedBuilder();
@@ -271,14 +283,14 @@ public class Trivia extends AbstractSlashCommand {
         embedBuilder.setTitle("Trivia");
         embedBuilder.setColor(Color.ORANGE);
         embedBuilder.addField(
-                question.getDifficulty().getLabel(),
-                question.getQuestion(),
+                triviaQuestion.getDifficulty().getLabel(),
+                triviaQuestion.getQuestion(),
                 false
         );
 
         AtomicInteger i = new AtomicInteger(0);
 
-        List<String> mappedQuestions = Arrays.stream(question.getPropositions())
+        List<String> mappedQuestions = Arrays.stream(triviaQuestion.getPropositions())
                 .map(s -> getLetterFromIndex(i.getAndIncrement()) + s)
                 .collect(Collectors.toList());
 
@@ -288,12 +300,12 @@ public class Trivia extends AbstractSlashCommand {
                 false
         );
 
-        List<Button> row = Arrays.stream(question.getPropositions())
+        List<Button> row = Arrays.stream(triviaQuestion.getPropositions())
                 .map(label -> Button.primary(
                         String.format(
                                 "trivia|answer|%s|%s|%s",
                                 roomId,
-                                question.getId(),
+                                triviaQuestion.getId(),
                                 label
                         ),
                         label
