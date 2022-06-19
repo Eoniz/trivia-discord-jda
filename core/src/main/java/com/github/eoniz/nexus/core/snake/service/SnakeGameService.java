@@ -23,19 +23,17 @@ public class SnakeGameService {
     public SnakeRoom createRoom(SnakePlayer owner) {
         String roomId = RoomUtils.generateRoomId();
 
-        return SnakeRoom.builder()
+        SnakeRoom room = SnakeRoom.builder()
                 .roomId(roomId)
-                .applePosition(new Position(3, 2))
-                .snake(
-                        List.of(
-                                new Position(5, 5),
-                                new Position(6, 5),
-                                new Position(6, 6),
-                                new Position(6, 7)
-                        )
-                )
+                .applePosition(new Position(1, 1))
+                .snake(List.of(new Position(5, 5)))
                 .owner(owner)
                 .build();
+
+        Optional<Position> nextApplePosition = generateNextApplePosition(room);
+        nextApplePosition.ifPresent(room::setApplePosition);
+
+        return room;
     }
 
     public SnakeRoom save(SnakeRoom snakeRoom) {
@@ -44,8 +42,7 @@ public class SnakeGameService {
     }
 
     public Optional<SnakeRoom> getSnakeRoomByMessageId(String messageId) {
-        Optional<SnakeRoom> snakeRoom = snakeRoomDao.getRoomByMessageId(messageId);
-        return snakeRoom;
+        return snakeRoomDao.getRoomByMessageId(messageId);
     }
 
     public SnakeRoom moveRight(SnakeRoom snakeRoom)
