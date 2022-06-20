@@ -2,13 +2,17 @@ package com.github.eoniz.nexus.discord.commands;
 
 import com.github.eoniz.nexus.discord.annotations.AnnotationsHelper;
 import com.github.eoniz.nexus.discord.annotations.ButtonInteractionHandler;
+import com.github.eoniz.nexus.discord.annotations.SelectInteractionHandler;
 import com.github.eoniz.nexus.discord.annotations.SlashCommand;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.GenericComponentInteractionCreateEvent;
+import net.dv8tion.jda.api.events.interaction.component.SelectMenuInteractionEvent;
 import org.reflections.Reflections;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -50,6 +54,39 @@ public class CommandsManager {
 
         for (Method method : methods) {
             ButtonInteractionHandler annotation = method.getAnnotation(ButtonInteractionHandler.class);
+            if (annotation.action().equals(args[0])) {
+                try {
+                    List<Object> methodArgs = new ArrayList<>();
+                    String[] givenArgs = Arrays.copyOfRange(args, 1, args.length);
+                    methodArgs.add(event);
+                    methodArgs.addAll(List.of(givenArgs));
+
+                    method.invoke(abstractSlashCommand, methodArgs.toArray());
+                    break;
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
+    public static void handleSelectInteraction(SelectMenuInteractionEvent event, String name, String[] args) {
+        AbstractSlashCommand abstractSlashCommand = slashCommands.get(name);
+        if (abstractSlashCommand == null) {
+            return;
+        }
+
+        if (args.length == 0) {
+            return;
+        }
+
+        List<Method> methods = AnnotationsHelper.getMethodsAnnotatedWith(
+                abstractSlashCommand.getClass(),
+                SelectInteractionHandler.class
+        );
+
+        for (Method method : methods) {
+            SelectInteractionHandler annotation = method.getAnnotation(SelectInteractionHandler.class);
             if (annotation.action().equals(args[0])) {
                 try {
                     List<Object> methodArgs = new ArrayList<>();

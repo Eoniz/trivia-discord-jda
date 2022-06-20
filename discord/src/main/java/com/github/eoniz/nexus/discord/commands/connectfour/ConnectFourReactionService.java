@@ -1,14 +1,8 @@
 package com.github.eoniz.nexus.discord.commands.connectfour;
 
 import com.github.eoniz.nexus.core.connectfour.service.ConnectFourGameService;
-import com.github.eoniz.nexus.core.snake.exception.SnakeGameFinishedException;
-import com.github.eoniz.nexus.core.snake.exception.SnakeHeadCollidesBodyException;
-import com.github.eoniz.nexus.core.snake.exception.SnakeHeadCollidesWallException;
-import com.github.eoniz.nexus.core.snake.service.SnakeGameService;
-import com.github.eoniz.nexus.model.connectfour.grid.ConnectFourGrid;
 import com.github.eoniz.nexus.model.connectfour.player.ConnectFourPlayer;
 import com.github.eoniz.nexus.model.connectfour.room.ConnectFourRoom;
-import com.github.eoniz.nexus.model.snake.room.SnakeRoom;
 import lombok.AllArgsConstructor;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.message.react.MessageReactionAddEvent;
@@ -25,6 +19,11 @@ public class ConnectFourReactionService {
         int x = getXFromEmoji(emoji);
 
         if (x == -1) {
+            return;
+        }
+
+        if (!connectFourGameService.checkIfCorrectPlayer(connectFourRoom, event.getMember().getId())) {
+            event.getReaction().removeReaction(event.getUser()).queue();
             return;
         }
 

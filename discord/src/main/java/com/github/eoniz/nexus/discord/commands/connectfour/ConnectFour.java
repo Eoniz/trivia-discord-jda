@@ -60,15 +60,16 @@ public class ConnectFour extends AbstractSlashCommand {
         }
         generatedBoard.append("\n1️⃣ 2️⃣ 3️⃣ 4️⃣ 5️⃣ 6️⃣ 7️⃣");
 
-        embedBuilder.addField("Tour", member.getAsMention(), false);
+        embedBuilder.addField("Tour", connectFourRoom.getActualPlayer().getAsMention(), false);
         embedBuilder.addField("Board", generatedBoard.toString(), false);
 
-        event.reply("La partie va commencer")
-                .setEphemeral(true)
-                .addActionRow(
-                        Button.primary("test", Emoji.fromMarkdown("1️⃣"))
+        event.reply(
+                String.format(
+                        "La partie va commencer entre %s et %s !",
+                        firstPlayer.getAsMention(),
+                        secondPlayer.getAsMention()
                 )
-                .queue();
+        ).setEphemeral(true).queue();
 
         textChannel.sendMessageEmbeds(embedBuilder.build())
                 .queue(embed -> {

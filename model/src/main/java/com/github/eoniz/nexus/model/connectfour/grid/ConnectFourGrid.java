@@ -21,6 +21,8 @@ public class ConnectFourGrid {
     @Builder.Default
     private int[] heights = new int[] { 0, 1 * HEIGHT, 2 * HEIGHT, 3 * HEIGHT, 4 * HEIGHT, 5 * HEIGHT, 6 * HEIGHT };
 
+    private static final int[] INITIAL_HEIGHTS = new int[] { 0, 1 * HEIGHT, 2 * HEIGHT, 3 * HEIGHT, 4 * HEIGHT, 5 * HEIGHT, 6 * HEIGHT };
+
     public boolean hasPlayerWon(GridPlayer player) {
         long bitboard = player == GridPlayer.FIRST ? boardFirstPlayer : boardSecondPlayer;
 
@@ -44,6 +46,10 @@ public class ConnectFourGrid {
     }
 
     public boolean place(GridPlayer player, int x) {
+        if (heights[x] + 1 >= INITIAL_HEIGHTS[x] + HEIGHT) {
+            return false;
+        }
+
         long move = 1L << heights[x]++;
 
         if (player == GridPlayer.FIRST) {

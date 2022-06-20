@@ -8,6 +8,7 @@ import com.github.eoniz.nexus.discord.config.PropertiesLoader;
 import com.github.eoniz.nexus.discord.events.message.MessageListener;
 import com.github.eoniz.nexus.discord.events.reaction.ReactionListener;
 import com.github.eoniz.nexus.discord.events.ready.ReadyListener;
+import com.github.eoniz.nexus.discord.events.select.SelectListener;
 import com.github.eoniz.nexus.discord.events.slash.SlashListener;
 import lombok.SneakyThrows;
 import net.dv8tion.jda.api.JDA;
@@ -33,6 +34,7 @@ public class Application {
         jda.addEventListener(new MessageListener());
         jda.addEventListener(new SlashListener());
         jda.addEventListener(new ReactionListener());
+        jda.addEventListener(new SelectListener());
 
         CommandsManager.getSlashCommands()
                 .values()

@@ -15,12 +15,14 @@ public class ConnectFourGameService {
     public ConnectFourRoom createRoom(ConnectFourPlayer firstPlayer, ConnectFourPlayer secondPlayer) {
         ConnectFourGrid connectFourGrid = ConnectFourGrid.builder().build();
 
+        ConnectFourPlayer startingPlayer = Math.round(Math.random() * 1) == 0 ? firstPlayer : secondPlayer;
+
         return ConnectFourRoom.builder()
                 .messageId(null)
                 .firstPlayer(firstPlayer)
                 .secondPlayer(secondPlayer)
                 .connectFourGrid(connectFourGrid)
-                .actualPlayerTurnId(firstPlayer.getId())
+                .actualPlayerTurnId(startingPlayer.getId())
                 .build();
     }
 
@@ -70,5 +72,10 @@ public class ConnectFourGameService {
 
     public void destroy(String messageId) {
         connectFourRoomDao.destroy(messageId);
+    }
+
+    public boolean checkIfCorrectPlayer(ConnectFourRoom connectFourRoom, String id) {
+        String actualPlayerTurnId = connectFourRoom.getActualPlayerTurnId();
+        return actualPlayerTurnId.equals(id);
     }
 }
